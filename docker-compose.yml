@@ -1,0 +1,27 @@
+version: '2'
+
+services:
+    web:
+        image: nginx
+        ports:
+            - "8080:80"
+        volumes:
+            - ./html:/usr/share/nginx/html
+    rest:
+        image: suzel/docker-postgrest
+        ports:
+            - "3000:3000"
+        environment:
+            - POSTGREST_DBHOST=db
+            - POSTGREST_DBNAME=homicide
+            - POSTGREST_DBUSER=postgres
+            - POSTGREST_DBPASS=psql
+    db:
+        image: postgres:9.5
+        ports:
+            - "5432:5432"
+        environment:
+            - PGDATA=/var/lib/postgresql/data/pgdata
+        volumes:
+            - ./db:/var/lib/postgresql/data/pgdata
+
