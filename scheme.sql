@@ -1,31 +1,18 @@
 BEGIN;
 
 CREATE TABLE rubric
-(
-  id serial PRIMARY KEY,
-  name varchar NOT NULL
-);
+    ( id serial PRIMARY KEY
+    , name varchar NOT NULL
+    );
 
-CREATE TABLE param
-(
-  id serial PRIMARY KEY,
-  name varchar NOT NULL,
-  rubric_id integer REFERENCES rubric (id)
-);
-
-CREATE TYPE stage AS ENUM ('preinvestigation', 'investigation', 'trial');
-
-CREATE TABLE advice
-(
-  id serial PRIMARY KEY,
-  content text NOT NULL
-);
-
-CREATE TABLE advice_param
-(
-  advice_id integer REFERENCES advice (id),
-  param_id  integer REFERENCES param  (id)
-);
+CREATE TABLE sample
+    ( id serial PRIMARY KEY
+    , name varchar NOT NULL
+    , rubric_id integer REFERENCES rubric (id)
+    , preinvestigation varchar[] NOT NULL DEFAULT '{}'
+    , investigation varchar[] NOT NULL DEFAULT '{}'
+    , trial varchar[] NOT NULL DEFAULT '{}'
+    );
 
 -- TEST DATA ------------------------------------------------------------------
 
@@ -36,7 +23,7 @@ INSERT INTO rubric (name) VALUES
 ('Убийство с инсценировкой иного события');
 
 
-INSERT INTO param (name, rubric_id) VALUES
+INSERT INTO "case" (name, rubric_id) VALUES
 ('есть следы помады', 2),
 ('волосы всклокочены', 2),
 ('нет свидетелей', 2),
