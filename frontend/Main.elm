@@ -1,7 +1,9 @@
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (..)
+import Html exposing (Html, button, div, text, a, ul, li)
+import Html.Events exposing (onClick)
+import Html.Attributes exposing (href)
 import Json.Decode exposing (..)
 import Http
+import Debug exposing (log)
 
 
 main =
@@ -35,6 +37,7 @@ type alias Model =
     , sampleList: List Sample
     , currentRubric: Maybe Rubric
     , currentSample: Maybe Sample
+    , adminMode: Bool
     }
 
 init : (Model, Cmd Msg)
@@ -43,6 +46,7 @@ init = (
     , sampleList = []
     , currentRubric = Nothing
     , currentSample = Nothing
+    , adminMode = False
     }, getRubricList)
 
 
@@ -50,6 +54,7 @@ init = (
 
 type Msg
     = Reset
+    | SetAdminMode
     | LoadRubricList (Result Http.Error (List Rubric))
     | LoadSampleList (Result Http.Error (List Sample))
     | ChangeRubric Rubric
@@ -59,8 +64,9 @@ type Msg
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    Reset -> ({ model | currentRubric = Nothing }, Cmd.none)
-    ChangeRubric r -> ({ model | currentRubric = Just r }, Cmd.none)
+    Reset -> ({ model | currentRubric = Nothing, currentSample = Nothing, sampleList = [] }, Cmd.none)
+    SetAdminMode -> ({model | adminMode = True}, Cmd.none)
+    ChangeRubric r -> ({ model | currentRubric = Just r }, getSampleList r)
     ChangeSample s -> ({ model | currentSample = Just s }, Cmd.none)
     LoadRubricList (Ok rs) -> ({ model | rubricList = rs }, Cmd.none)
     LoadRubricList (Err _) -> (model, Cmd.none)
@@ -76,7 +82,43 @@ subscriptions model = Sub.none
 
 -- VIEW
 
-renderRubricList rs = div [] (List.map (\x -> text x.name) rs)
+renderRubric r = li []
+    [ a [href ("#/" ++ toString r.id), onClick (ChangeRubric r)]
+        [text r.name]
+    ]
+renderRubricList rs = ul [] (List.map renderRubric rs)
+
+renderSample s = li []
+    [ a [ href ("#/" ++ toString s.rubric_id ++ "/" ++ toString s.id)
+        , onClick (ChangeSample s)]
+        [text s.name]
+    ]
+renderSampleList ls = ul [] (List.map renderSample ls)
+
+renderCurrentRubric rubricList currentRubric =
+    case currentRubric of
+        Just r ->
+            div []
+                [ a [href "#/", onClick Reset]
+                    [text "Назад"]
+                , text r.name
+                ]
+        Nothing -> renderRubricList rubricList
+
+renderCurrentSample sampleList currentSample =
+    case currentSample of
+        Just s ->
+            div []
+                [ text s.name
+                ]
+        Nothing -> div [] []
+
+renderLogin adminMode =
+    if adminMode then
+        div [] []
+    else
+        button [onClick SetAdminMode]
+            [text "Войти в режим администратора"]
 
 view : Model -> Html Msg
 view
@@ -84,11 +126,14 @@ view
     , sampleList
     , currentRubric
     , currentSample
-    } =
-    case currentRubric of
-        Just r -> text r.name
-        Nothing -> renderRubricList rubricList
-
+    , adminMode
+    } = 
+    div []
+        [ renderLogin adminMode
+        , renderCurrentRubric rubricList currentRubric
+        , renderSampleList sampleList
+        , renderCurrentSample sampleList currentSample
+        ]
 
 -- ACTIONS
 
@@ -110,3 +155,11 @@ getRubricList =
         request = Http.get url (list rubricDecoder)
     in
         Http.send LoadRubricList request
+
+getSampleList : Rubric -> Cmd Msg
+getSampleList r =
+    let
+        url = backendUrl ++ "/sample?rubric_id=eq." ++ toString r.id
+        request = Http.get url (list sampleDecoder)
+    in
+        Http.send LoadSampleList request

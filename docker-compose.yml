@@ -26,6 +26,8 @@ services:
             - ./db:/var/lib/postgresql/data/pgdata
     pgadmin:
         image: fenglc/pgadmin4
+        volumes:
+            - .pgadmin:/root/.pgadmin
         ports:
             - "5050:5050"
 
