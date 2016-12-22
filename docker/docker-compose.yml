@@ -8,7 +8,7 @@ services:
         volumes:
             - ./html:/usr/share/nginx/html
     rest:
-        image: suzel/docker-postgrest
+        build: .
         ports:
             - "3000:3000"
         environment:

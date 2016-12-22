@@ -1,8 +1,10 @@
-import Html exposing (Html, button, div, text, a, ul, li)
-import Html.Events exposing (onClick)
-import Html.Attributes exposing (href)
+import Html exposing (Html, button, div, text, a, ul, li, input)
+import Html.Events exposing (onClick, onInput)
+import Html.Attributes exposing (href, type_, placeholder)
 import Json.Decode exposing (..)
+import Json.Encode as JE
 import Http
+import Task
 import Debug exposing (log)
 
 
@@ -38,6 +40,7 @@ type alias Model =
     , currentRubric: Maybe Rubric
     , currentSample: Maybe Sample
     , adminMode: Bool
+    , rubricName: String
     }
 
 init : (Model, Cmd Msg)
@@ -47,6 +50,7 @@ init = (
     , currentRubric = Nothing
     , currentSample = Nothing
     , adminMode = False
+    , rubricName = ""
     }, getRubricList)
 
 
@@ -55,6 +59,8 @@ init = (
 type Msg
     = Reset
     | SetAdminMode
+    | AddRubric
+    | ChangeRubricName String
     | LoadRubricList (Result Http.Error (List Rubric))
     | LoadSampleList (Result Http.Error (List Sample))
     | ChangeRubric Rubric
@@ -66,6 +72,8 @@ update msg model =
   case msg of
     Reset -> ({ model | currentRubric = Nothing, currentSample = Nothing, sampleList = [] }, Cmd.none)
     SetAdminMode -> ({model | adminMode = True}, Cmd.none)
+    AddRubric -> (model, addRubric model.rubricName)
+    ChangeRubricName s -> ({ model | rubricName = s}, Cmd.none)
     ChangeRubric r -> ({ model | currentRubric = Just r }, getSampleList r)
     ChangeSample s -> ({ model | currentSample = Just s }, Cmd.none)
     LoadRubricList (Ok rs) -> ({ model | rubricList = rs }, Cmd.none)
@@ -81,12 +89,25 @@ subscriptions model = Sub.none
 
 
 -- VIEW
+emptyNode = div [] []
+renderIf cond node = if cond then node else emptyNode
+
+
+renderRubricForm adminMode =
+    renderIf adminMode <|
+        div []
+            [ input [type_ "text", placeholder "Название", onInput ChangeRubricName] []
+            , button [onClick AddRubric] [text "Создать"]
+            ]
 
 renderRubric r = li []
     [ a [href ("#/" ++ toString r.id), onClick (ChangeRubric r)]
         [text r.name]
     ]
-renderRubricList rs = ul [] (List.map renderRubric rs)
+renderRubricList rs adminMode = div [] 
+    [ ul [] (List.map renderRubric rs)
+    , renderRubricForm adminMode
+    ]
 
 renderSample s = li []
     [ a [ href ("#/" ++ toString s.rubric_id ++ "/" ++ toString s.id)
@@ -95,7 +116,7 @@ renderSample s = li []
     ]
 renderSampleList ls = ul [] (List.map renderSample ls)
 
-renderCurrentRubric rubricList currentRubric =
+renderCurrentRubric rubricList currentRubric adminMode =
     case currentRubric of
         Just r ->
             div []
@@ -103,7 +124,7 @@ renderCurrentRubric rubricList currentRubric =
                     [text "Назад"]
                 , text r.name
                 ]
-        Nothing -> renderRubricList rubricList
+        Nothing -> renderRubricList rubricList adminMode
 
 renderCurrentSample sampleList currentSample =
     case currentSample of
@@ -111,12 +132,10 @@ renderCurrentSample sampleList currentSample =
             div []
                 [ text s.name
                 ]
-        Nothing -> div [] []
+        Nothing -> emptyNode
 
 renderLogin adminMode =
-    if adminMode then
-        div [] []
-    else
+    renderIf (not adminMode) <|
         button [onClick SetAdminMode]
             [text "Войти в режим администратора"]
 
@@ -130,7 +149,7 @@ view
     } = 
     div []
         [ renderLogin adminMode
-        , renderCurrentRubric rubricList currentRubric
+        , renderCurrentRubric rubricList currentRubric adminMode
         , renderSampleList sampleList
         , renderCurrentSample sampleList currentSample
         ]
@@ -148,13 +167,15 @@ sampleDecoder = map6 Sample
 
 backendUrl = "http://localhost:3000" -- /rubric 
 
-getRubricList : Cmd Msg
-getRubricList =
+getRubricListRequest =
     let
         url = backendUrl ++ "/rubric"
-        request = Http.get url (list rubricDecoder)
     in
-        Http.send LoadRubricList request
+        Http.get url (list rubricDecoder)
+
+getRubricList : Cmd Msg
+getRubricList =
+    Http.send LoadRubricList getRubricListRequest
 
 getSampleList : Rubric -> Cmd Msg
 getSampleList r =
@@ -163,3 +184,18 @@ getSampleList r =
         request = Http.get url (list sampleDecoder)
     in
         Http.send LoadSampleList request
+
+addRubric : String -> Cmd Msg
+addRubric name =
+    let
+        url = backendUrl ++ "/rubric"
+        body = JE.object [("name", JE.string name)]
+        request = Http.post url (Http.jsonBody body) (succeed ())
+    in 
+        (Http.toTask request)
+            |> Task.andThen (\_ -> Http.toTask getRubricListRequest)
+            |> Task.attempt LoadRubricList
+
+-- HELPERS
+emptyDecode x _ = succeed x
+
