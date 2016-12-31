@@ -3,7 +3,15 @@ module Sample exposing (..)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
-import Helpers exposing (noDecodePost, noDecodePatch, renderIf, addForm, renderList)
+import Helpers exposing
+    ( noDecodePost
+    , noDecodePatch
+    , noDecodeDelete
+    , renderIf
+    , renderList
+    , addForm
+    , deleteButton
+    )
 import Task
 import Html exposing (Html, text, div, a)
 import Html.Attributes exposing (href)
@@ -81,6 +89,7 @@ init =
 
 type Msg
     = Add Rubric.Entity
+    | Delete Entity
     | ChangeName String
     | LoadList (Result Http.Error (List Entity))
     | ChangeCurrent Entity
@@ -93,6 +102,7 @@ update msg model =
   case msg of
     ChangeName s -> { model | name = s} ! []
     Add r -> model ! [addEntity r model.name]
+    Delete e -> { model | current = Nothing } ! [deleteEntity e]
     ChangeCurrent e -> { model | current = Just e } ! []
     ChangeListField listField s ->
         { model | listFields = updateField model.listFields listField s } ! []
@@ -128,15 +138,15 @@ encodeEntity e = JE.object
     , ("trial", JE.list (List.map JE.string e.trial))
     ]
 
-listRequest : Rubric.Entity -> Http.Request (List Entity)
-listRequest r =
+listRequest : Int -> Http.Request (List Entity)
+listRequest rId =
     Http.get
-        (Api.url ++ "/sample?rubric_id=eq." ++ toString r.id)
+        (Api.url ++ "/sample?rubric_id=eq." ++ toString rId)
         (JD.list entityDecoder)
 
 getList : Rubric.Entity -> Cmd Msg
 getList r =
-    Http.send LoadList <| listRequest r
+    Http.send LoadList <| listRequest r.id
 
 addEntity : Rubric.Entity -> String -> Cmd Msg
 addEntity r name =
@@ -145,7 +155,17 @@ addEntity r name =
         request = noDecodePost (Api.url ++ "/sample") (Http.jsonBody body)
     in
         (Http.toTask request)
-            |> Task.andThen (\_ -> Http.toTask <| listRequest r)
+            |> Task.andThen (\_ -> Http.toTask <| listRequest r.id)
+            |> Task.attempt LoadList
+
+deleteEntity : Entity -> Cmd Msg
+deleteEntity e =
+    let
+        request = noDecodeDelete
+            (Api.url ++ "/sample?id=eq." ++ toString e.id)
+    in
+        (Http.toTask request)
+            |> Task.andThen (\_ -> Http.toTask <| listRequest e.rubric_id)
             |> Task.attempt LoadList
 
 saveEntity : ListField -> Entity -> Cmd Msg
@@ -170,11 +190,12 @@ renderListField adminMode rec e listField =
                 |> renderIf adminMode
             ]
 
-renderEntity : Entity -> Html Msg
-renderEntity s = div []
+renderEntity : Bool -> Entity -> Html Msg
+renderEntity adminMode s = div []
     [ a [ href ("#/" ++ toString s.rubric_id ++ "/" ++ toString s.id)
         , onClick (ChangeCurrent s)]
-        [text s.name]
+        [ text s.name ]
+    , renderIf adminMode <| deleteButton (Delete s)
     ]
 
 
@@ -184,7 +205,7 @@ render model adminMode rubric =
         Just s ->
             let renderLF = renderListField adminMode model.listFields s
             in div []
-                [ renderList renderEntity model.list
+                [ renderList (renderEntity adminMode) model.list
                 , text s.name
                 , renderLF Preinvestigation
                 , renderLF Investigation
@@ -192,7 +213,7 @@ render model adminMode rubric =
                 ]
         Nothing ->
             div []
-                [ renderList renderEntity model.list
+                [ renderList (renderEntity adminMode) model.list
                 , renderIf adminMode <| addForm model.name (Add rubric) ChangeName "Условие"
                 ]
 

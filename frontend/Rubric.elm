@@ -3,7 +3,14 @@ module Rubric exposing (..)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
-import Helpers exposing (noDecodePost, renderIf, addForm, renderList)
+import Helpers exposing
+    ( noDecodePost
+    , noDecodeDelete
+    , renderIf
+    , renderList
+    , addForm
+    , deleteButton
+    )
 import Task
 import Html exposing (Html, div, text, a)
 import Html.Attributes exposing (href)
@@ -32,6 +39,7 @@ init =
 type Msg
     = Reset
     | Add
+    | Delete Entity
     | ChangeName String
     | LoadList (Result Http.Error (List Entity))
     | ChangeCurrent Entity
@@ -41,6 +49,7 @@ update msg model =
   case msg of
     Reset -> { model | current = Nothing } ! []
     Add -> model ! [addEntity model.name]
+    Delete e -> { model | current = Nothing } ! [deleteEntity e]
     ChangeName r -> { model | name = r} ! []
     ChangeCurrent r -> { model | current = Just r } ! []
     LoadList (Ok rs) -> { model | list = rs } ! []
@@ -69,10 +78,21 @@ addEntity name =
             |> Task.andThen (\_ -> Http.toTask listRequest)
             |> Task.attempt LoadList
 
-renderEntity : Entity -> Html Msg
-renderEntity r = div []
+deleteEntity : Entity -> Cmd Msg
+deleteEntity e =
+    let
+        request = noDecodeDelete
+            (Api.url ++ "/rubric?id=eq." ++ toString e.id)
+    in
+        (Http.toTask request)
+            |> Task.andThen (\_ -> Http.toTask <| listRequest)
+            |> Task.attempt LoadList
+
+renderEntity : Bool -> Entity -> Html Msg
+renderEntity adminMode r = div []
     [ a [href ("#/" ++ toString r.id), onClick (ChangeCurrent r)]
         [text r.name]
+    , renderIf adminMode <| deleteButton (Delete r)
     ]
 
 render : Model -> Bool -> Html Msg
@@ -86,7 +106,7 @@ render model adminMode =
                 ]
         Nothing ->
             div []
-                [ renderList renderEntity model.list
+                [ renderList (renderEntity adminMode) model.list
                 , renderIf adminMode <| addForm model.name Add ChangeName "Рубрика"
                 ]
 
