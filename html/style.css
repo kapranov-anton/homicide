@@ -1,0 +1,42 @@
+* {
+    font-family: 'Roboto', sans-serif;
+}
+
+.clearfix:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+h1 {
+    padding-left: 0.5em;
+}
+
+h1, h2, h3 {
+    padding-top: 1em;
+    font-weight: normal;
+}
+
+.admin-button {
+    display: block;
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+.back-link {
+    padding-left: 1em;
+    padding-bottom: 1em;
+}
+
+.left-float-button {
+    float: left;
+    margin-right: 1em;
+}
+
+.pure-menu-link {
+    white-space: normal;
+}
+
+.sample-content {
+    margin: 1em;
+}
