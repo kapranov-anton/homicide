@@ -4,16 +4,17 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Helpers exposing
-    ( noDecodePost
+    ( MenuItem
+    , noDecodePost
     , noDecodeDelete
     , renderIf
-    , renderList
+    , renderMenu
     , addForm
     , deleteButton
     )
 import Task
-import Html exposing (Html, div, text, a)
-import Html.Attributes exposing (href)
+import Html exposing (Html, div, text, a, h1)
+import Html.Attributes exposing (href, class)
 import Html.Events exposing (onClick)
 
 import Api
@@ -88,25 +89,32 @@ deleteEntity e =
             |> Task.andThen (\_ -> Http.toTask <| listRequest)
             |> Task.attempt LoadList
 
-renderEntity : Bool -> Entity -> Html Msg
-renderEntity adminMode r = div []
-    [ a [href ("#/" ++ toString r.id), onClick (ChangeCurrent r)]
-        [text r.name]
-    , renderIf adminMode <| deleteButton (Delete r)
-    ]
+makeMenuItem : Entity -> MenuItem Msg
+makeMenuItem e =
+    { name = e.name
+    , href = "#/" ++ toString e.id
+    , onClick = ChangeCurrent e
+    , onDelete = Delete e
+    }
+
+backLink : Html Msg
+backLink =
+    div [class "back-link"]
+        [ text "← "
+        , a [href "#/", onClick Reset] [text "К выбору рубрики"]
+        ]
 
 render : Model -> Bool -> Html Msg
 render model adminMode =
     case model.current of
         Just r ->
             div []
-                [ a [href "#/", onClick Reset]
-                    [text "Назад"]
-                , text r.name
+                [ h1 [] [text r.name]
+                , backLink
                 ]
         Nothing ->
             div []
-                [ renderList (renderEntity adminMode) model.list
+                [ renderMenu adminMode <| List.map makeMenuItem model.list
                 , renderIf adminMode <| addForm model.name Add ChangeName "Рубрика"
                 ]
 

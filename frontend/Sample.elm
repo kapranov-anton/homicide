@@ -4,18 +4,18 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Helpers exposing
-    ( noDecodePost
+    ( MenuItem
+    , noDecodePost
     , noDecodePatch
     , noDecodeDelete
     , renderIf
-    , renderList
+    , renderMenu
     , addForm
     , deleteButton
     )
 import Task
-import Html exposing (Html, text, div, a)
-import Html.Attributes exposing (href)
-import Html.Events exposing (onClick)
+import Html exposing (Html, text, div, a, h2, h3)
+import Html.Attributes exposing (class)
 
 import Rubric
 import Api
@@ -95,6 +95,7 @@ type Msg
     | ChangeCurrent Entity
     | ChangeListField ListField String
     | AddToList ListField Entity
+    | DeleteFromList ListField Entity String
     | EntitySaved ListField (Result Http.Error ())
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -106,6 +107,12 @@ update msg model =
     ChangeCurrent e -> { model | current = Just e } ! []
     ChangeListField listField s ->
         { model | listFields = updateField model.listFields listField s } ! []
+    DeleteFromList listField e item ->
+        let
+            value = List.filter (\i -> i /= item) <| getEntityField e listField
+            newCurrent = updateEntityField e listField value
+        in
+            { model | current = Just newCurrent} ! [saveEntity listField newCurrent]
     AddToList listField e ->
         let
             value = getField model.listFields listField :: getEntityField e listField
@@ -183,37 +190,43 @@ renderListField adminMode rec e listField =
     let
         title = getFieldLabel listField
         items = getEntityField e listField
+        renderItem i =
+            div [ class "clearfix" ]
+                [ renderIf adminMode <| deleteButton <| DeleteFromList listField e i 
+                , text i
+                ]
     in
         div []
-            [ renderList text items
+            [ h3 [] [text <| getFieldLabel listField]
+            , div [] (List.map renderItem items)
             , addForm (getField rec listField) (AddToList listField e) (ChangeListField listField) title
                 |> renderIf adminMode
             ]
 
-renderEntity : Bool -> Entity -> Html Msg
-renderEntity adminMode s = div []
-    [ a [ href ("#/" ++ toString s.rubric_id ++ "/" ++ toString s.id)
-        , onClick (ChangeCurrent s)]
-        [ text s.name ]
-    , renderIf adminMode <| deleteButton (Delete s)
-    ]
-
+makeMenuItem : Entity -> MenuItem Msg
+makeMenuItem e =
+    { name = e.name
+    , href = "#/" ++ toString e.rubric_id ++ "/" ++ toString e.id
+    , onClick = ChangeCurrent e
+    , onDelete = Delete e
+    }
 
 render : Model -> Bool -> Rubric.Entity -> Html Msg
 render model adminMode rubric =
-    case model.current of
-        Just s ->
-            let renderLF = renderListField adminMode model.listFields s
-            in div []
-                [ renderList (renderEntity adminMode) model.list
-                , text s.name
-                , renderLF Preinvestigation
-                , renderLF Investigation
-                , renderLF Trial
-                ]
-        Nothing ->
-            div []
-                [ renderList (renderEntity adminMode) model.list
-                , renderIf adminMode <| addForm model.name (Add rubric) ChangeName "Условие"
-                ]
+    let
+        renderLF = renderListField adminMode model.listFields
+        listFields s = List.map (renderLF s) [Preinvestigation, Investigation, Trial]
+        menu = renderMenu adminMode <| List.map makeMenuItem model.list
+        form = renderIf adminMode <| addForm model.name (Add rubric) ChangeName "Условие"
+        content = case model.current of
+            Just s ->
+                h2 [] [text s.name]
+                :: listFields s
+            Nothing -> []
+    in 
+        div []
+            [ menu
+            , form
+            , div [class "sample-content"] content
+            ]
 

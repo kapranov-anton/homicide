@@ -1,17 +1,12 @@
 import Html exposing (Html, button, div, text, a, ul, li, input)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick, onInput)
-import Html.Attributes exposing (href, type_, placeholder)
-import Json.Decode exposing (..)
-import Json.Encode as JE
-import Http
-import Task
-import Helpers exposing (noDecodePost, renderJust, renderIf)
 
+import Helpers exposing (noDecodePost, renderJust, renderIf)
 import Rubric
 import Sample
-import Api
 
-
+main : Program Never Model Msg
 main =
     Html.program
         { init = init
@@ -67,7 +62,6 @@ update msg model =
         in
             ({ model | sample = newModel }, Cmd.map SampleMsg cmd)
 
-
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
@@ -75,10 +69,14 @@ subscriptions model = Sub.none
 
 
 -- VIEW
-
+renderLogin : Bool -> Html Msg
 renderLogin adminMode =
     renderIf (not adminMode) <|
-        button [onClick SetAdminMode]
+        button
+            [ onClick SetAdminMode
+            , class "pure-button"
+            , class "admin-button"
+            ]
             [text "Войти в режим администратора"]
 
 view : Model -> Html Msg
