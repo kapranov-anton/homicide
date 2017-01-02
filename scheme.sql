@@ -9,9 +9,9 @@ CREATE TABLE sample
     ( id serial PRIMARY KEY
     , name varchar NOT NULL
     , rubric_id integer REFERENCES rubric (id)
-    , preinvestigation jsonb NOT NULL DEFAULT '[]'::jsonb
-    , investigation jsonb NOT NULL DEFAULT '[]'::jsonb
-    , trial jsonb NOT NULL DEFAULT '[]'::jsonb
+    , preinvestigation text NOT NULL DEFAULT ''
+    , investigation text NOT NULL DEFAULT ''
+    , trial text NOT NULL DEFAULT ''
     );
 
 -- TEST DATA ------------------------------------------------------------------
