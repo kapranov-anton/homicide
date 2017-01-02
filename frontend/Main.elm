@@ -35,7 +35,7 @@ init = (
 -- UPDATE
 
 type Msg
-    = SetAdminMode
+    = ToggleAdminMode
     | RubricMsg Rubric.Msg
     | SampleMsg Sample.Msg
 
@@ -43,7 +43,7 @@ type Msg
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    SetAdminMode -> ({model | adminMode = True}, Cmd.none)
+    ToggleAdminMode -> ({model | adminMode = not model.adminMode}, Cmd.none)
     RubricMsg subMsg ->
         let
             (subModel, subCmd) = Rubric.update subMsg model.rubric
@@ -71,13 +71,16 @@ subscriptions model = Sub.none
 -- VIEW
 renderLogin : Bool -> Html Msg
 renderLogin adminMode =
-    renderIf (not adminMode) <|
-        button
-            [ onClick SetAdminMode
-            , class "pure-button"
-            , class "admin-button"
-            ]
-            [text "Войти в режим администратора"]
+    button
+        [ onClick ToggleAdminMode
+        , class "pure-button"
+        , class "admin-button"
+        ]
+        [ text <|
+            if adminMode
+            then "Выйти из режима администратора"
+            else "Войти в режим администратора"
+        ]
 
 view : Model -> Html Msg
 view { rubric, sample, adminMode } =

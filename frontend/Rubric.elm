@@ -19,14 +19,14 @@ import Html.Events exposing (onClick)
 
 import Api
 
-type alias Model =
-    { list: List Entity
-    , current: Maybe Entity
+type alias Entity =
+    { id: Int
     , name: String
     }
 
-type alias Entity =
-    { id: Int
+type alias Model =
+    { list: List Entity
+    , current: Maybe Entity
     , name: String
     }
 
@@ -56,10 +56,40 @@ update msg model =
     LoadList (Ok rs) -> { model | list = rs } ! []
     LoadList (Err x) -> Debug.log "load list error" model ! []
 
-entityDecoder : JD.Decoder Entity
-entityDecoder = JD.map2 Entity
-    (JD.field "id" JD.int)
-    (JD.field "name" JD.string)
+makeMenuItem : Entity -> MenuItem Msg
+makeMenuItem e =
+    { name = e.name
+    , href = "#/" ++ toString e.id
+    , onClick = ChangeCurrent e
+    , onDelete = Delete e
+    }
+
+backLink : Html Msg
+backLink =
+    div [class "back-link"]
+        [ text "← "
+        , a [href "#/", onClick Reset] [text "К выбору рубрики"]
+        ]
+
+render : Model -> Bool -> Html Msg
+render model adminMode =
+    case model.current of
+        Just r ->
+            div []
+                [ h1 [] [text r.name]
+                , backLink
+                ]
+        Nothing ->
+                renderMenu adminMode
+                    { label = "Рубрика"
+                    , val = model.name 
+                    , onAdd = Add
+                    , onChange = ChangeName 
+                    }
+                    (List.map makeMenuItem model.list)
+
+
+-- API ------------------------------------------------------------------------
 
 listRequest : Http.Request (List Entity)
 listRequest =
@@ -89,32 +119,10 @@ deleteEntity e =
             |> Task.andThen (\_ -> Http.toTask <| listRequest)
             |> Task.attempt LoadList
 
-makeMenuItem : Entity -> MenuItem Msg
-makeMenuItem e =
-    { name = e.name
-    , href = "#/" ++ toString e.id
-    , onClick = ChangeCurrent e
-    , onDelete = Delete e
-    }
+-- JSON -----------------------------------------------------------------------
 
-backLink : Html Msg
-backLink =
-    div [class "back-link"]
-        [ text "← "
-        , a [href "#/", onClick Reset] [text "К выбору рубрики"]
-        ]
-
-render : Model -> Bool -> Html Msg
-render model adminMode =
-    case model.current of
-        Just r ->
-            div []
-                [ h1 [] [text r.name]
-                , backLink
-                ]
-        Nothing ->
-            div []
-                [ renderMenu adminMode <| List.map makeMenuItem model.list
-                , renderIf adminMode <| addForm model.name Add ChangeName "Рубрика"
-                ]
+entityDecoder : JD.Decoder Entity
+entityDecoder = JD.map2 Entity
+    (JD.field "id" JD.int)
+    (JD.field "name" JD.string)
 

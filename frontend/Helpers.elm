@@ -1,7 +1,16 @@
 module Helpers exposing (..)
 
 import Http
-import Html exposing (Html, Attribute, div, textarea, button, text, ul, li, a)
+import Html exposing
+    ( Html
+    , Attribute
+    , text
+    , div, span
+    , fieldset, textarea, button
+    , ul, li
+    , a
+    , h1, h2, h3, h4
+    )
 import Html.Attributes exposing (placeholder, value, class, href, style)
 import Html.Events exposing (onClick, onInput, on, keyCode)
 import Json.Decode as JD
@@ -39,15 +48,31 @@ renderJust maybeVal render =
     Maybe.map render maybeVal
         |> Maybe.withDefault emptyNode
 
+textField : String -> (String -> msg) -> String -> Html msg
+textField title inputHandler val =
+    div []
+        [ textarea [placeholder title, value val, onInput inputHandler] []
+        ]
+
+submit : String -> String -> msg -> Html msg
+submit title comment handler =
+    div []
+        [ button
+            [onClick handler, class "pure-button", class "pure-button-primary"]
+            [text title]
+        , span [class "submit-comment"] [text comment]
+        ]
+
+simpleForm : List (Html msg) -> Html msg
+simpleForm fields =
+    div [class "pure-form"]
+        [ fieldset [class "pure-group"] fields ]
+
 addForm : String -> msg -> (String -> msg) -> String -> Html msg
 addForm val addHandler inputHandler title =
-    div [class "pure-form"]
-        [ div []
-            [textarea [placeholder title, value val, onInput inputHandler] []]
-        , div []
-            [button
-                [onClick addHandler, class "pure-button", class "pure-button-primary"]
-                [text "Добавить"]]
+    simpleForm
+        [ textField title inputHandler val
+        , submit "Добавить" "" addHandler
         ]
 
 deleteButton : msg -> Html msg
@@ -59,11 +84,11 @@ deleteButton deleteHandler =
         ]
         [ text "Удалить" ]
 
-type alias MenuItem a =
+type alias MenuItem msg =
     { name: String
     , href: String
-    , onClick: a
-    , onDelete: a
+    , onClick: msg
+    , onDelete: msg
     }
 
 renderMenuItem : Bool -> MenuItem msg -> Html msg
@@ -77,15 +102,29 @@ renderMenuItem adminMode item =
             [ text item.name ]
         ]
 
-renderMenu : Bool -> List (MenuItem msg) -> Html msg
-renderMenu adminMode items =
+type alias MenuParams msg =
+    { label: String
+    , val: String
+    , onAdd: msg
+    , onChange: (String -> msg)
+    }
+
+renderMenu : Bool -> MenuParams msg -> List (MenuItem msg) -> Html msg
+renderMenu adminMode params items =
     let
         renderListItem i = li [class "pure-menu-item"] [renderMenuItem adminMode i]
+        renderedItems =
+            ul
+                [ class "pure-menu-list"
+                , class "menu-list"
+                ] <| List.map renderListItem items
+        form = addForm params.val params.onAdd params.onChange params.label
     in
-        ul
-            [ class "pure-menu-list"
-            , class "menu-list"
-            ] <| List.map renderListItem items
+        div []
+            [ renderedItems
+            , renderIf adminMode <| form
+            ]
+        
 
 onEnter : msg -> Attribute msg
 onEnter msg =

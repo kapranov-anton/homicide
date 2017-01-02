@@ -2,6 +2,11 @@
     font-family: 'Roboto', sans-serif;
 }
 
+textarea {
+    width: 100%;
+    min-height: 10em;
+}
+
 .clearfix:after {
     content: "";
     display: table;
@@ -10,11 +15,12 @@
 
 h1 {
     padding-left: 0.5em;
+    padding-bottom: 0.25em;
 }
 
 h1, h2, h3 {
     padding-top: 1em;
-    font-weight: normal;
+    margin: 0;
 }
 
 .admin-button {
@@ -37,6 +43,14 @@ h1, h2, h3 {
     white-space: normal;
 }
 
-.sample-content {
-    margin: 1em;
+.pure-form {
+    padding: 1em;
+}
+
+.submit-comment {
+    padding-left: 1em;
+    padding-top: 0.25em;
+    display: inline-block;
+    vertical-align: middle;
+    
 }
