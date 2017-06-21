@@ -92,9 +92,9 @@ render model adminMode rubric =
         content = \s ->
             H.simpleForm <|
                 [ h2 [] [text s.name] ]
-                ++ field "До расследования" (\x -> { s | preinvestigation = x }) s.preinvestigation
-                ++ field "Во время расследования" (\x -> { s | investigation = x }) s.investigation
-                ++ field "Во время суда" (\x -> { s | trial = x }) s.trial
+                ++ field "---НЕТ---" (\x -> { s | preinvestigation = x }) s.preinvestigation
+                ++ field "Ситуации предварительного следствия" (\x -> { s | investigation = x }) s.investigation
+                ++ field "Ситуации судебного следствия" (\x -> { s | trial = x }) s.trial
                 ++ [ H.renderIf adminMode <| H.submit "Сохранить" status (Save s) ]
     in 
         div []
